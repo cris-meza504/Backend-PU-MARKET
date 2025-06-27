@@ -48,5 +48,16 @@ public class registroControlador {
             return ResponseEntity.badRequest().body(e.getMessage());
         }
     }
+
+    @PostMapping("/reenviar-verificacion")
+        public ResponseEntity<String> reenviar(@RequestParam String correo) {
+            try {
+                registroService.reenviarVerificacion(correo);
+                return ResponseEntity.ok("Correo de verificación reenviado.");
+            } catch (RuntimeException e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
+                }
+    }
+
     
 }

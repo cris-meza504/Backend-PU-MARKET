@@ -1,6 +1,7 @@
 package hn.unah.ingenieria.pu_market.service;
 
 import java.time.LocalDateTime;
+import java.util.Optional;
 import java.util.UUID;
 
 import org.springframework.beans.factory.annotation.Autowired;
@@ -66,7 +67,7 @@ public class registroServicio {
             throw new RuntimeException("El token ha expirado.");
 
         verificacion.getUsuario().setVerificado(true);
-
+        verificacion.setVerificado(true);
         verificacionRepo.save(verificacion);
         usuarioRepo.save(verificacion.getUsuario());
     }
@@ -75,8 +76,36 @@ public class registroServicio {
         String enlace = "http://localhost:8080/api/verificar?token=" + token;
         SimpleMailMessage mensaje = new SimpleMailMessage();
         mensaje.setTo(correo);
-        mensaje.setSubject("Verificación de correo");
+        mensaje.setSubject("Verificación de correo de PU-Market");
         mensaje.setText("Haz clic en el siguiente enlace para verificar tu cuenta:\n\n" + enlace);
         mailSender.send(mensaje);
+    }
+
+    public void reenviarVerificacion(String correo) {
+    Optional<Usuario> usuarioOpt = usuarioRepo.findByCorreoInstitucional(correo);
+
+    if (usuarioOpt.isEmpty()) {
+        throw new RuntimeException("Usuario no encontrado");
+    }
+
+    Usuario usuario = usuarioOpt.get();
+
+    if (usuario.getVerificado()) {
+        throw new RuntimeException("Esta cuenta ya fue verificada");
+    }
+
+    String nuevoToken = UUID.randomUUID().toString();
+
+    Verificacion verificacion = verificacionRepo.findByUsuario(usuario)
+        .orElse(new Verificacion());
+
+    verificacion.setUsuario(usuario);
+    verificacion.setToken(nuevoToken);
+    verificacion.setFechaExpiracion(LocalDateTime.now().plusHours(24));
+    verificacion.setVerificado(false);
+
+    verificacionRepo.save(verificacion);
+
+    enviarCorreoVerificacion(correo, nuevoToken);
     }
 }
