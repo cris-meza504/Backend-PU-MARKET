@@ -9,6 +9,6 @@ import hn.unah.ingenieria.pu_market.entity.Usuario;
 
 
 @Repository
-public interface usuarioRepositorio extends JpaRepository<Usuario, Long>{
+public interface usuarioRepositorio extends JpaRepository<Usuario, Integer>{
     Optional<Usuario> findByCorreoInstitucional(String correoInstitucional);
 }

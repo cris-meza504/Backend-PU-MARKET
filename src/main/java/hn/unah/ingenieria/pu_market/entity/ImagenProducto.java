@@ -1,7 +1,5 @@
 package hn.unah.ingenieria.pu_market.entity;
 
-import java.time.LocalDateTime;
-
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
@@ -13,25 +11,18 @@ import jakarta.persistence.Table;
 import lombok.Data;
 
 @Entity
-@Table(name = "Verificaciones")
+@Table(name = "ImagenesProducto")
 @Data
-public class Verificacion {
+public class ImagenProducto {
     
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column(name = "ID_Verificacion")
+    @Column(name = "ID_Imagen")
     private Integer id;
 
-    @ManyToOne
-    @JoinColumn(name = "ID_Usuario")
-    private Usuario usuario;
+    @ManyToOne @JoinColumn(name = "ID_Producto")
+    private Producto producto;
 
-    @Column(name = "Token")
-    private String token;
-
-    @Column(name = "FechaExpiracion")
-    private LocalDateTime fechaExpiracion;
-
-    @Column(name = "Verificado")
-    private Boolean verificado;
+    @Column(name = "URL_Imagen")
+    private String urlImagen;
 }

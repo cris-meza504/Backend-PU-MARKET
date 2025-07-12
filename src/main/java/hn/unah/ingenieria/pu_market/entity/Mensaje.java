@@ -13,25 +13,24 @@ import jakarta.persistence.Table;
 import lombok.Data;
 
 @Entity
-@Table(name = "Verificaciones")
+@Table(name = "Mensajes")
 @Data
-public class Verificacion {
+public class Mensaje {
     
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column(name = "ID_Verificacion")
+    @Column(name = "ID_Mensaje")
     private Integer id;
 
-    @ManyToOne
-    @JoinColumn(name = "ID_Usuario")
-    private Usuario usuario;
+    @ManyToOne @JoinColumn(name = "ID_Conversacion")
+    private Conversacion conversacion;
 
-    @Column(name = "Token")
-    private String token;
+    @ManyToOne @JoinColumn(name = "ID_Emisor")
+    private Usuario emisor;
 
-    @Column(name = "FechaExpiracion")
-    private LocalDateTime fechaExpiracion;
+    @Column(name = "Contenido")
+    private String contenido;
 
-    @Column(name = "Verificado")
-    private Boolean verificado;
+    @Column(name = "FechaEnvio")
+    private LocalDateTime fechaEnvio;
 }
