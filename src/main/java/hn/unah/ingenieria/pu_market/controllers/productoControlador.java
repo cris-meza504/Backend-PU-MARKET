@@ -3,6 +3,7 @@ package hn.unah.ingenieria.pu_market.controllers;
 import java.util.List;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -13,6 +14,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import hn.unah.ingenieria.pu_market.dto.ProductoConImagenesDTO;
 import hn.unah.ingenieria.pu_market.entity.Producto;
 import hn.unah.ingenieria.pu_market.service.productoServicio;
 
@@ -29,6 +31,13 @@ public class productoControlador {
         return productoServicio.crear(p);
     }
 
+    @PostMapping("/con-imagenes")
+    public ResponseEntity<Producto> crearConImagenes(@RequestBody ProductoConImagenesDTO dto) {
+    Producto nuevo = productoServicio.crearProductoConImagenes(dto);
+    return ResponseEntity.ok(nuevo);
+    }
+
+
     @GetMapping("/{id}")
     public Producto getById(@PathVariable Integer id) {
         return productoServicio.obtenerPorId(id);
@@ -38,6 +47,13 @@ public class productoControlador {
     public List<Producto> listar() {
         return productoServicio.listarTodos();
     }
+
+    // Obtener todos los productos activos excluyendo los del usuario logueado
+    @GetMapping("/excluir-vendedor/{vendedorId}")
+    public ResponseEntity<List<Producto>> excluirProductosVendedor(@PathVariable Integer vendedorId) {
+        return ResponseEntity.ok(productoServicio.listarTodosExcluyendoUsuarioLogueado(vendedorId));
+    }
+
 
     @PutMapping("/{id}")
     public Producto actualizar(@PathVariable Integer id, @RequestBody Producto p) {

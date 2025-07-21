@@ -15,4 +15,6 @@ public interface productoRepositorio extends JpaRepository<Producto, Integer>{
     List<Producto> findByVendedorIdAndActivoTrue(Integer vendedorId);
     // Buscar por categoría
     List<Producto> findByCategoriaIdAndActivoTrue(Integer categoriaId);
+    //listar todos los productos menos los del usuario logiado 
+    List<Producto> findByActivoTrueAndVendedorIdNot(Integer vendedorId);
 }

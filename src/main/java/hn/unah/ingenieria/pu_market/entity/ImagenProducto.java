@@ -1,5 +1,7 @@
 package hn.unah.ingenieria.pu_market.entity;
 
+import com.fasterxml.jackson.annotation.JsonBackReference;
+
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
@@ -20,9 +22,16 @@ public class ImagenProducto {
     @Column(name = "ID_Imagen")
     private Integer id;
 
-    @ManyToOne @JoinColumn(name = "ID_Producto")
+    
+    @ManyToOne 
+    @JoinColumn(name = "ID_Producto")
+    @JsonBackReference
     private Producto producto;
 
     @Column(name = "URL_Imagen")
     private String urlImagen;
+    
+    public ImagenProducto() {
+        
+    }
 }
