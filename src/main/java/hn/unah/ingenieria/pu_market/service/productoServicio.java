@@ -9,12 +9,17 @@ import org.springframework.stereotype.Service;
 import hn.unah.ingenieria.pu_market.dto.ProductoConImagenesDTO;
 import hn.unah.ingenieria.pu_market.entity.ImagenProducto;
 import hn.unah.ingenieria.pu_market.entity.Producto;
+import hn.unah.ingenieria.pu_market.entity.Usuario;
 import hn.unah.ingenieria.pu_market.repository.imagenproductoRepositorio;
 import hn.unah.ingenieria.pu_market.repository.productoRepositorio;
+import hn.unah.ingenieria.pu_market.repository.usuarioRepositorio;
 
 @Service
 public class productoServicio {
     
+    @Autowired
+    private usuarioRepositorio usuarioRepo;
+
     @Autowired
     private productoRepositorio productoRepo;
 
@@ -77,6 +82,7 @@ public class productoServicio {
         p.setPrecio(pDatos.getPrecio());
         p.setCategoria(pDatos.getCategoria());
         p.setActivo(pDatos.getActivo());
+        p.setEstadoDelProducto(pDatos.getEstadoDelProducto());
         return productoRepo.save(p);
     }
 
@@ -124,4 +130,14 @@ public class productoServicio {
         // productos.forEach(p -> p.setImagenes(imagenRepo.findByProductoId(p.getId())));
         return productos;
     }
+
+    public List<Producto> listarPorVendedorCorreo(String correo) {
+    Usuario vendedor = usuarioRepo.findByCorreoInstitucional(correo)
+        .orElse(null);
+    if (vendedor == null) {
+        return List.of();
+    }
+    return productoRepo.findByVendedorIdAndActivoTrue(vendedor.getId());
+}
+
 }

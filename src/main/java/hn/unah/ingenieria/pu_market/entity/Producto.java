@@ -36,6 +36,11 @@ public class Producto {
     @Column(name = "Descripcion")
     private String descripcion;
 
+    @ManyToOne
+    @JoinColumn(name = "estado_id")
+    private EstadoProducto estadoDelProducto;
+
+
     @Column(name = "Precio")
     private Double precio;
 

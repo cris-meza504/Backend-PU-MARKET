@@ -75,4 +75,12 @@ public class productoControlador {
         return productoServicio.listarPorCategoria(categoriaId);
     }
 
+    
+    @GetMapping("/vendedor-correo/{correo}")
+    public ResponseEntity<List<Producto>> getProductosPorVendedorCorreo(@PathVariable String correo) {
+    List<Producto> productos = productoServicio.listarPorVendedorCorreo(correo);
+    return ResponseEntity.ok(productos);
+}
+
+
 }

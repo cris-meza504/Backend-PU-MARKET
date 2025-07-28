@@ -35,7 +35,8 @@ public class registroControlador {
             );
             return ResponseEntity.ok("Usuario registrado. Revisa tu correo para verificar tu cuenta.");
         } catch (Exception e) {
-            return ResponseEntity.badRequest().body(e.getMessage());
+            e.printStackTrace();
+            return ResponseEntity.badRequest().body(e.getMessage() != null ? e.getMessage(): e.toString());
         }
     }
 

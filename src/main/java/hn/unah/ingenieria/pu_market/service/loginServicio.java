@@ -1,6 +1,7 @@
 package hn.unah.ingenieria.pu_market.service;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import hn.unah.ingenieria.pu_market.entity.Usuario;
@@ -12,6 +13,9 @@ public class loginServicio {
     @Autowired
     private usuarioRepositorio usuarioRepo;
 
+    @Autowired
+    private PasswordEncoder passwordEncoder;
+
     public Usuario login(String correo, String password) {
     Usuario usuario = usuarioRepo.findByCorreoInstitucional(correo)
         .orElseThrow(() -> new RuntimeException("Usuario no encontrado"));
@@ -21,12 +25,12 @@ public class loginServicio {
         throw new RuntimeException("La cuenta no ha sido verificada.");
     }
 
-    // Comparar contraseñas (si están cifradas, usar BCryptPasswordEncoder)
-    if (!usuario.getPasswordHash().equals(password)) {
+    // Comparar contraseñas encriptadas 
+    if (!passwordEncoder.matches(password, usuario.getPasswordHash())) {
         throw new RuntimeException("Contraseña incorrecta");
     }
 
-    return usuario; // o un DTO si no querés enviar toda la entidad
+    return usuario;
 }
 
 }

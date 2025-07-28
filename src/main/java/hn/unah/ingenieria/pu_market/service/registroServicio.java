@@ -7,6 +7,7 @@ import java.util.UUID;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.mail.SimpleMailMessage;
 import org.springframework.mail.javamail.JavaMailSender;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import hn.unah.ingenieria.pu_market.entity.Usuario;
@@ -27,6 +28,9 @@ public class registroServicio {
     @Autowired
     private JavaMailSender mailSender;
 
+    @Autowired
+    private PasswordEncoder passwordEncoder; 
+
     public void registrarNuevoUsuario(String nombre, String apellido, String correo, String matricula, String password) {
         if (usuarioRepo.findByCorreoInstitucional(correo).isPresent()) {
             throw new RuntimeException("Correo ya registrado.");
@@ -39,6 +43,10 @@ public class registroServicio {
         usuario.setMatricula(matricula);
         usuario.setVerificado(false);
         usuario.setPasswordHash(password);
+
+        //encriptacion de la contraseña 
+        usuario.setPasswordHash(passwordEncoder.encode(password));
+
 
         usuarioRepo.save(usuario);
 
