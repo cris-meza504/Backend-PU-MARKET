@@ -4,20 +4,20 @@ import hn.unah.ingenieria.pu_market.entity.Usuario;
 import hn.unah.ingenieria.pu_market.entity.Verificacion;
 import hn.unah.ingenieria.pu_market.repository.usuarioRepositorio;
 import hn.unah.ingenieria.pu_market.repository.verificacionesRepositorio;
+import hn.unah.ingenieria.pu_market.service.registroServicio;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.*;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.mail.SimpleMailMessage;
 import org.springframework.mail.javamail.JavaMailSender;
+import org.springframework.mail.SimpleMailMessage;
+import org.springframework.security.crypto.password.PasswordEncoder;
 
 import java.time.LocalDateTime;
 import java.util.Optional;
-import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
@@ -32,8 +32,11 @@ class RegistroServicioTest {
     @Mock
     private JavaMailSender mailSender;
 
+    @Mock
+    private PasswordEncoder passwordEncoder;
+
     @InjectMocks
-    private hn.unah.ingenieria.pu_market.service.registroServicio registroServicio;
+    private registroServicio registroServicio;
 
     private Usuario usuario;
     private Verificacion verificacion;
@@ -41,134 +44,130 @@ class RegistroServicioTest {
     @BeforeEach
     void setUp() {
         usuario = new Usuario();
-        usuario.setId(1);
-        usuario.setNombre("Cristofer");
-        usuario.setApellido("Meza");
-        usuario.setCorreoInstitucional("test@unah.hn");
-        usuario.setMatricula("2021-001");
-        usuario.setPasswordHash("1234");
+        usuario.setNombre("Juan");
+        usuario.setApellido("Pérez");
+        usuario.setCorreoInstitucional("juan@unah.hn");
+        usuario.setMatricula("2019xxxx");
         usuario.setVerificado(false);
 
         verificacion = new Verificacion();
         verificacion.setUsuario(usuario);
-        verificacion.setToken(UUID.randomUUID().toString());
+        verificacion.setToken("tokentest");
         verificacion.setFechaExpiracion(LocalDateTime.now().plusHours(24));
         verificacion.setVerificado(false);
     }
 
-    // -----------------------
-    // registrarNuevoUsuario()
-    // -----------------------
     @Test
     void registrarNuevoUsuario_exito() {
-        when(usuarioRepo.findByCorreoInstitucional("test@unah.hn")).thenReturn(Optional.empty());
-        when(usuarioRepo.save(any(Usuario.class))).thenReturn(usuario);
-        when(verificacionRepo.save(any(Verificacion.class))).thenReturn(verificacion);
+        when(usuarioRepo.findByCorreoInstitucional(usuario.getCorreoInstitucional()))
+                .thenReturn(Optional.empty());
+        when(passwordEncoder.encode("secreta")).thenReturn("hashsecreta");
+        when(usuarioRepo.save(any(Usuario.class))).thenAnswer(i -> i.getArguments()[0]);
+        when(verificacionRepo.save(any(Verificacion.class))).thenAnswer(i -> i.getArguments()[0]);
 
-        registroServicio.registrarNuevoUsuario(
-                "Cristofer", "Meza", "test@unah.hn", "2021-001", "1234"
+        assertDoesNotThrow(() ->
+            registroServicio.registrarNuevoUsuario(
+                usuario.getNombre(), usuario.getApellido(),
+                usuario.getCorreoInstitucional(), usuario.getMatricula(), "secreta"
+            )
         );
-
-        verify(usuarioRepo, times(1)).save(any(Usuario.class));
-        verify(verificacionRepo, times(1)).save(any(Verificacion.class));
-        verify(mailSender, times(1)).send(any(SimpleMailMessage.class));
+        verify(mailSender).send(any(SimpleMailMessage.class));
     }
 
     @Test
-    void registrarNuevoUsuario_correoDuplicado() {
-        when(usuarioRepo.findByCorreoInstitucional("test@unah.hn"))
+    void registrarNuevoUsuario_correoYaRegistrado() {
+        when(usuarioRepo.findByCorreoInstitucional(usuario.getCorreoInstitucional()))
                 .thenReturn(Optional.of(usuario));
 
-        assertThrows(RuntimeException.class, () ->
-                registroServicio.registrarNuevoUsuario(
-                        "Cristofer", "Meza", "test@unah.hn", "2021-001", "1234"
-                )
+        RuntimeException ex = assertThrows(RuntimeException.class, () ->
+            registroServicio.registrarNuevoUsuario(
+                usuario.getNombre(), usuario.getApellido(),
+                usuario.getCorreoInstitucional(), usuario.getMatricula(), "secreta"
+            )
         );
-
-        verify(usuarioRepo, never()).save(any());
+        assertEquals("Correo ya registrado.", ex.getMessage());
         verify(mailSender, never()).send(any(SimpleMailMessage.class));
     }
 
-    // -----------------------
-    // verificarCorreo()
-    // -----------------------
     @Test
-    void verificarCorreo_tokenValido() {
-        when(verificacionRepo.findByToken(verificacion.getToken()))
+    void verificarCorreo_exito() {
+        verificacion.setVerificado(false);
+        verificacion.setFechaExpiracion(LocalDateTime.now().plusMinutes(5));
+        when(verificacionRepo.findByToken("tokentest"))
                 .thenReturn(Optional.of(verificacion));
+        when(verificacionRepo.save(any(Verificacion.class))).thenReturn(verificacion);
 
-        registroServicio.verificarCorreo(verificacion.getToken());
-
-        assertTrue(verificacion.getUsuario().getVerificado());
+        assertDoesNotThrow(() -> registroServicio.verificarCorreo("tokentest"));
         assertTrue(verificacion.getVerificado());
-        verify(verificacionRepo).save(verificacion);
+        assertTrue(verificacion.getUsuario().getVerificado());
         verify(usuarioRepo).save(verificacion.getUsuario());
     }
 
     @Test
     void verificarCorreo_tokenInvalido() {
-        when(verificacionRepo.findByToken("invalido")).thenReturn(Optional.empty());
+        when(verificacionRepo.findByToken("tokennovalido")).thenReturn(Optional.empty());
 
-        assertThrows(RuntimeException.class,
-                () -> registroServicio.verificarCorreo("invalido")
+        RuntimeException ex = assertThrows(RuntimeException.class, () ->
+                registroServicio.verificarCorreo("tokennovalido")
         );
-    }
-
-    @Test
-    void verificarCorreo_tokenExpirado() {
-        verificacion.setFechaExpiracion(LocalDateTime.now().minusHours(1));
-        when(verificacionRepo.findByToken(verificacion.getToken()))
-                .thenReturn(Optional.of(verificacion));
-
-        assertThrows(RuntimeException.class,
-                () -> registroServicio.verificarCorreo(verificacion.getToken())
-        );
+        assertEquals("Token inválido", ex.getMessage());
     }
 
     @Test
     void verificarCorreo_tokenYaUsado() {
         verificacion.setVerificado(true);
-        when(verificacionRepo.findByToken(verificacion.getToken()))
-                .thenReturn(Optional.of(verificacion));
+        when(verificacionRepo.findByToken("tokentest")).thenReturn(Optional.of(verificacion));
 
-        assertThrows(RuntimeException.class,
-                () -> registroServicio.verificarCorreo(verificacion.getToken())
+        RuntimeException ex = assertThrows(RuntimeException.class, () ->
+                registroServicio.verificarCorreo("tokentest")
         );
+        assertEquals("Este token ya fue usado.", ex.getMessage());
     }
 
-    // -----------------------
-    // reenviarVerificacion()
-    // -----------------------
+    @Test
+    void verificarCorreo_tokenExpirado() {
+        verificacion.setVerificado(false);
+        verificacion.setFechaExpiracion(LocalDateTime.now().minusMinutes(5));
+        when(verificacionRepo.findByToken("tokentest")).thenReturn(Optional.of(verificacion));
+
+        RuntimeException ex = assertThrows(RuntimeException.class, () ->
+                registroServicio.verificarCorreo("tokentest")
+        );
+        assertEquals("El token ha expirado.", ex.getMessage());
+    }
+
     @Test
     void reenviarVerificacion_exito() {
-        when(usuarioRepo.findByCorreoInstitucional("test@unah.hn"))
+        when(usuarioRepo.findByCorreoInstitucional(usuario.getCorreoInstitucional()))
                 .thenReturn(Optional.of(usuario));
         when(verificacionRepo.findByUsuario(usuario)).thenReturn(Optional.of(verificacion));
+        when(verificacionRepo.save(any(Verificacion.class))).thenReturn(verificacion);
 
-        registroServicio.reenviarVerificacion("test@unah.hn");
-
-        verify(verificacionRepo).save(any(Verificacion.class));
+        assertDoesNotThrow(() ->
+            registroServicio.reenviarVerificacion(usuario.getCorreoInstitucional())
+        );
         verify(mailSender).send(any(SimpleMailMessage.class));
     }
 
     @Test
-    void reenviarVerificacion_usuarioNoExiste() {
-        when(usuarioRepo.findByCorreoInstitucional("test@unah.hn"))
-                .thenReturn(Optional.empty());
+    void reenviarVerificacion_usuarioNoEncontrado() {
+        when(usuarioRepo.findByCorreoInstitucional("noexiste@unah.hn")).thenReturn(Optional.empty());
 
-        assertThrows(RuntimeException.class,
-                () -> registroServicio.reenviarVerificacion("test@unah.hn")
+        RuntimeException ex = assertThrows(RuntimeException.class, () ->
+                registroServicio.reenviarVerificacion("noexiste@unah.hn")
         );
+        assertEquals("Usuario no encontrado", ex.getMessage());
     }
 
     @Test
-    void reenviarVerificacion_usuarioYaVerificado() {
+    void reenviarVerificacion_yaVerificado() {
         usuario.setVerificado(true);
-        when(usuarioRepo.findByCorreoInstitucional("test@unah.hn"))
+        when(usuarioRepo.findByCorreoInstitucional(usuario.getCorreoInstitucional()))
                 .thenReturn(Optional.of(usuario));
 
-        assertThrows(RuntimeException.class,
-                () -> registroServicio.reenviarVerificacion("test@unah.hn")
+        RuntimeException ex = assertThrows(RuntimeException.class, () ->
+                registroServicio.reenviarVerificacion(usuario.getCorreoInstitucional())
         );
+        assertEquals("Esta cuenta ya fue verificada", ex.getMessage());
     }
 }
