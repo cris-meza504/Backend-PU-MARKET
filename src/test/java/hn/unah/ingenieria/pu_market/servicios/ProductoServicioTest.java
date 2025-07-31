@@ -4,6 +4,7 @@ import hn.unah.ingenieria.pu_market.dto.ProductoConImagenesDTO;
 import hn.unah.ingenieria.pu_market.entity.Categoria;
 import hn.unah.ingenieria.pu_market.entity.ImagenProducto;
 import hn.unah.ingenieria.pu_market.entity.Producto;
+import hn.unah.ingenieria.pu_market.entity.Usuario;
 import hn.unah.ingenieria.pu_market.service.productoServicio;
 import hn.unah.ingenieria.pu_market.repository.imagenproductoRepositorio;
 import hn.unah.ingenieria.pu_market.repository.productoRepositorio;
@@ -16,6 +17,8 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import java.util.*;
 
 import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
@@ -117,22 +120,21 @@ class ProductoServicioTest {
     }
 
     // ------------------------
-    // ELIMINAR (lógico)
+    // ELIMINAR 
     // ------------------------
     @Test
     void eliminar_producto_exito() {
-        when(productoRepo.findById(1)).thenReturn(Optional.of(producto));
-        when(productoRepo.save(any(Producto.class))).thenReturn(producto);
+    when(productoRepo.existsById(1)).thenReturn(true);
 
-        productoServicio.eliminar(1);
+    productoServicio.eliminar(1);
 
-        assertFalse(producto.getActivo());
-        verify(productoRepo).save(producto);
+    verify(productoRepo).deleteById(1);
     }
+
 
     @Test
     void eliminar_producto_noEncontrado() {
-        when(productoRepo.findById(99)).thenReturn(Optional.empty());
+        when(productoRepo.existsById(99)).thenReturn(false);
 
         RuntimeException ex = assertThrows(RuntimeException.class, () ->
                 productoServicio.eliminar(99)
@@ -205,4 +207,37 @@ class ProductoServicioTest {
         assertEquals(1, lista.size());
         verify(productoRepo).findByCategoriaIdAndActivoTrue(1);
     }
+
+    @Mock
+private hn.unah.ingenieria.pu_market.repository.usuarioRepositorio usuarioRepo;
+
+@Test
+void listarPorVendedorCorreo_exito() {
+    Usuario vendedor = new Usuario();
+    vendedor.setId(10);
+    vendedor.setCorreoInstitucional("test@unah.hn");
+
+    when(usuarioRepo.findByCorreoInstitucional("test@unah.hn")).thenReturn(Optional.of(vendedor));
+    when(productoRepo.findByVendedorIdAndActivoTrue(10)).thenReturn(List.of(producto));
+
+    List<Producto> productos = productoServicio.listarPorVendedorCorreo("test@unah.hn");
+
+    assertEquals(1, productos.size());
+    verify(usuarioRepo).findByCorreoInstitucional("test@unah.hn");
+    verify(productoRepo).findByVendedorIdAndActivoTrue(10);
+    }
+
+    @Test
+void listarPorVendedorCorreo_usuarioNoEncontrado() {
+    when(usuarioRepo.findByCorreoInstitucional("desconocido@unah.hn")).thenReturn(Optional.empty());
+
+    List<Producto> productos = productoServicio.listarPorVendedorCorreo("desconocido@unah.hn");
+
+    assertTrue(productos.isEmpty());
+    verify(usuarioRepo).findByCorreoInstitucional("desconocido@unah.hn");
+    verify(productoRepo, never()).findByVendedorIdAndActivoTrue(anyInt());
+}
+
+
+
 }

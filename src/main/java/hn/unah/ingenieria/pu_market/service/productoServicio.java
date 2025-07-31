@@ -81,19 +81,18 @@ public class productoServicio {
         p.setDescripcion(pDatos.getDescripcion());
         p.setPrecio(pDatos.getPrecio());
         p.setCategoria(pDatos.getCategoria());
-        p.setActivo(pDatos.getActivo());
         p.setEstadoDelProducto(pDatos.getEstadoDelProducto());
         return productoRepo.save(p);
     }
 
     /* ----------------------------------
-       Eliminar lógico (Activo=false)
+       Eliminar producto
        ---------------------------------- */
     public void eliminar(Integer id) {
-        Producto p = productoRepo.findById(id)
-            .orElseThrow(() -> new RuntimeException("Producto no encontrado"));
-        p.setActivo(false);
-        productoRepo.save(p);
+    if (!productoRepo.existsById(id)) {
+        throw new RuntimeException("Producto no encontrado");
+    }
+    productoRepo.deleteById(id);
     }
 
     public Producto obtenerPorId(Integer id) {

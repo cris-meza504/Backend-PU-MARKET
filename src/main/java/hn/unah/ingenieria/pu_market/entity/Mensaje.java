@@ -32,5 +32,5 @@ public class Mensaje {
     private String contenido;
 
     @Column(name = "FechaEnvio")
-    private LocalDateTime fechaEnvio;
+    private LocalDateTime fechaEnvio = LocalDateTime.now();
 }
