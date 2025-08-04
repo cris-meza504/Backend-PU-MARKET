@@ -13,7 +13,7 @@ import java.util.UUID;
 @CrossOrigin(origins = "http://localhost:3000")
 public class imagenProductoControlador {
 
-    private final String RUTA_IMAGENES = "C:/Users/ADMIN2/Documents/UNAH/Ingenieria de software/proyecto/imagenes/";
+    private final String RUTA_IMAGENES = "C:/imagenes/";
 
     @PostMapping
     public ResponseEntity<String> subirImagen(@RequestParam("imagen") MultipartFile archivo) {
