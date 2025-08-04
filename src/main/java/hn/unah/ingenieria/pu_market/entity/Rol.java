@@ -9,16 +9,15 @@ import jakarta.persistence.Table;
 import lombok.Data;
 
 @Entity
-@Table(name = "Categorias")
+@Table(name = "Roles")
 @Data
-public class Categoria {
+public class Rol {
     
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column(name = "ID_Categoria")
+    @Column(name = "ID_Rol")
     private Integer id;
 
-    @Column(name = "Nombre", unique = true)
-    private String nombre;
-
+    @Column(name = "NombreRol", nullable = false, unique = true)
+    private String nombreRol;
 }

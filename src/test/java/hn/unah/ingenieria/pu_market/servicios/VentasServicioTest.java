@@ -1,10 +1,5 @@
 package hn.unah.ingenieria.pu_market.servicios;
 
-import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.Mockito.*;
-
-import java.util.*;
-
 import hn.unah.ingenieria.pu_market.dto.VentasDTO;
 import hn.unah.ingenieria.pu_market.entity.Producto;
 import hn.unah.ingenieria.pu_market.entity.Usuario;
@@ -13,12 +8,16 @@ import hn.unah.ingenieria.pu_market.repository.productoRepositorio;
 import hn.unah.ingenieria.pu_market.repository.usuarioRepositorio;
 import hn.unah.ingenieria.pu_market.repository.ventaRepositorio;
 import hn.unah.ingenieria.pu_market.service.ventaServicio;
-
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.*;
 import org.mockito.junit.jupiter.MockitoExtension;
+
+import java.util.*;
+
+import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
 class VentaServicioTest {
@@ -38,6 +37,7 @@ class VentaServicioTest {
     private Producto producto;
     private Usuario vendedor;
     private Usuario comprador;
+    private VentasDTO ventasDTO;
 
     @BeforeEach
     void setUp() {
@@ -46,131 +46,139 @@ class VentaServicioTest {
         producto.setActivo(true);
 
         vendedor = new Usuario();
-        vendedor.setId(100);
-        vendedor.setNombre("Juan");
+        vendedor.setId(10);
 
         comprador = new Usuario();
-        comprador.setId(200);
-        comprador.setNombre("Ana");
+        comprador.setId(20);
+
+        ventasDTO = new VentasDTO();
+        ventasDTO.setIdProducto(1);
+        ventasDTO.setIdVendedor(10);
+        ventasDTO.setIdComprador(20);
+        ventasDTO.setPrecioVenta(500.0);
     }
 
-    // -----------------------------
-    // REGISTRAR VENTA - ÉXITO
-    // -----------------------------
     @Test
     void registrarVenta_exito() {
-        VentasDTO dto = new VentasDTO();
-        dto.setIdProducto(1);
-        dto.setIdVendedor(100);
-        dto.setIdComprador(200);
-        dto.setPrecioVenta(150.0);
-
         when(productoRepo.findById(1)).thenReturn(Optional.of(producto));
-        when(usuarioRepo.findById(100)).thenReturn(Optional.of(vendedor));
-        when(usuarioRepo.findById(200)).thenReturn(Optional.of(comprador));
-        when(productoRepo.save(any(Producto.class))).thenReturn(producto);
-        when(ventaRepo.save(any(Venta.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        when(usuarioRepo.findById(10)).thenReturn(Optional.of(vendedor));
+        when(usuarioRepo.findById(20)).thenReturn(Optional.of(comprador));
+        when(productoRepo.save(any(Producto.class))).thenAnswer(i -> i.getArguments()[0]);
+        when(ventaRepo.save(any(Venta.class))).thenAnswer(i -> {
+            Venta v = (Venta) i.getArguments()[0];
+            v.setIdVenta(1);
+            return v;
+        });
 
-        Venta venta = ventaServicio.registrarVenta(dto);
+        Venta venta = ventaServicio.registrarVenta(ventasDTO);
 
         assertNotNull(venta);
+        assertEquals(producto, venta.getProducto());
         assertEquals(vendedor, venta.getVendedor());
         assertEquals(comprador, venta.getComprador());
-        assertEquals(producto, venta.getProducto());
-        assertEquals(150.0, venta.getPrecioVenta());
-        assertFalse(producto.getActivo());
-
+        assertEquals(500.0, venta.getPrecioVenta());
+        assertFalse(producto.getActivo()); // Producto se desactiva
         verify(productoRepo).save(producto);
         verify(ventaRepo).save(any(Venta.class));
     }
 
-    // -----------------------------
-    // REGISTRAR VENTA - PRODUCTO NO EXISTE
-    // -----------------------------
     @Test
     void registrarVenta_productoNoEncontrado() {
-        VentasDTO dto = new VentasDTO();
-        dto.setIdProducto(999);
+        when(productoRepo.findById(1)).thenReturn(Optional.empty());
 
-        when(productoRepo.findById(999)).thenReturn(Optional.empty());
-
-        RuntimeException ex = assertThrows(RuntimeException.class, () -> {
-            ventaServicio.registrarVenta(dto);
-        });
-
+        RuntimeException ex = assertThrows(RuntimeException.class, () ->
+                ventaServicio.registrarVenta(ventasDTO)
+        );
         assertTrue(ex.getMessage().contains("Producto no encontrado"));
+        verify(productoRepo, never()).save(any());
+        verify(ventaRepo, never()).save(any());
     }
 
-    // -----------------------------
-    // REGISTRAR VENTA - VENDEDOR NO EXISTE
-    // -----------------------------
     @Test
     void registrarVenta_vendedorNoEncontrado() {
-        VentasDTO dto = new VentasDTO();
-        dto.setIdProducto(1);
-        dto.setIdVendedor(999);
-        dto.setIdComprador(200);
-
         when(productoRepo.findById(1)).thenReturn(Optional.of(producto));
-        when(usuarioRepo.findById(999)).thenReturn(Optional.empty());
+        when(usuarioRepo.findById(10)).thenReturn(Optional.empty());
 
-        RuntimeException ex = assertThrows(RuntimeException.class, () -> {
-            ventaServicio.registrarVenta(dto);
-        });
-
+        RuntimeException ex = assertThrows(RuntimeException.class, () ->
+                ventaServicio.registrarVenta(ventasDTO)
+        );
         assertTrue(ex.getMessage().contains("Vendedor no encontrado"));
+        verify(ventaRepo, never()).save(any());
     }
 
-    // -----------------------------
-    // REGISTRAR VENTA - COMPRADOR NO EXISTE
-    // -----------------------------
     @Test
     void registrarVenta_compradorNoEncontrado() {
-        VentasDTO dto = new VentasDTO();
-        dto.setIdProducto(1);
-        dto.setIdVendedor(100);
-        dto.setIdComprador(999);
-
         when(productoRepo.findById(1)).thenReturn(Optional.of(producto));
-        when(usuarioRepo.findById(100)).thenReturn(Optional.of(vendedor));
-        when(usuarioRepo.findById(999)).thenReturn(Optional.empty());
+        when(usuarioRepo.findById(10)).thenReturn(Optional.of(vendedor));
+        when(usuarioRepo.findById(20)).thenReturn(Optional.empty());
 
-        RuntimeException ex = assertThrows(RuntimeException.class, () -> {
-            ventaServicio.registrarVenta(dto);
-        });
-
+        RuntimeException ex = assertThrows(RuntimeException.class, () ->
+                ventaServicio.registrarVenta(ventasDTO)
+        );
         assertTrue(ex.getMessage().contains("Comprador no encontrado"));
+        verify(ventaRepo, never()).save(any());
     }
 
-    // -----------------------------
-    // OBTENER VENTAS POR VENDEDOR
-    // -----------------------------
     @Test
-    void obtenerVentasPorVendedor_exito() {
-        Venta venta = new Venta();
-        venta.setVendedor(vendedor);
+    void obtenerVentasPorVendedor() {
+        List<Venta> ventas = Arrays.asList(new Venta(), new Venta());
+        when(ventaRepo.findByVendedorId(10)).thenReturn(ventas);
 
-        when(ventaRepo.findByVendedorId(100)).thenReturn(List.of(venta));
+        List<Venta> resultado = ventaServicio.obtenerVentasPorVendedor(10);
 
-        List<Venta> ventas = ventaServicio.obtenerVentasPorVendedor(100);
-
-        assertEquals(1, ventas.size());
-        verify(ventaRepo).findByVendedorId(100);
+        assertEquals(2, resultado.size());
+        verify(ventaRepo).findByVendedorId(10);
     }
 
-    // -----------------------------
-    // OBTENER COMPRAS POR COMPRADOR
-    // -----------------------------
     @Test
-    void obtenerComprasPorComprador_exito() {
-        Venta venta = new Venta();
-        venta.setComprador(comprador);
+    void obtenerComprasPorComprador() {
+        List<Venta> compras = Arrays.asList(new Venta());
+        when(ventaRepo.findByCompradorId(20)).thenReturn(compras);
 
-        when(ventaRepo.findByCompradorId(200)).thenReturn(List.of(venta));
+        List<Venta> resultado = ventaServicio.obtenerComprasPorComprador(20);
 
-        List<Venta> compras = ventaServicio.obtenerComprasPorComprador(200);
+        assertEquals(1, resultado.size());
+        verify(ventaRepo).findByCompradorId(20);
+    }
 
-        assertEquals(1, compras.size());
-        verify(ventaRepo).findByCompradorId(200);
+    @Test
+    void getVentasPorUsuario() {
+        when(ventaRepo.countByVendedorId(10)).thenReturn(5);
+
+        int ventas = ventaServicio.getVentasPorUsuario(10);
+
+        assertEquals(5, ventas);
+        verify(ventaRepo).countByVendedorId(10);
+    }
+
+    @Test
+    void getComprasPorUsuario() {
+        when(ventaRepo.countByCompradorId(20)).thenReturn(7);
+
+        int compras = ventaServicio.getComprasPorUsuario(20);
+
+        assertEquals(7, compras);
+        verify(ventaRepo).countByCompradorId(20);
+    }
+
+    @Test
+    void obtenerTodasLasVentas() {
+        List<Venta> ventas = Arrays.asList(new Venta(), new Venta(), new Venta());
+        when(ventaRepo.findAll()).thenReturn(ventas);
+
+        List<Venta> resultado = ventaServicio.obtenerTodasLasVentas();
+
+        assertEquals(3, resultado.size());
+        verify(ventaRepo).findAll();
+    }
+
+    @Test
+    void contarVentas() {
+        when(ventaRepo.count()).thenReturn(99L);
+
+        long total = ventaServicio.contarVentas();
+
+        assertEquals(99L, total);
+        verify(ventaRepo).count();
     }
 }

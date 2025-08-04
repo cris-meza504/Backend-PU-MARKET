@@ -56,4 +56,21 @@ public class ventaServicio {
     public List<Venta> obtenerComprasPorComprador(Integer idComprador) {
         return ventaRepo.findByCompradorId(idComprador);
     }
+
+    public int getVentasPorUsuario(Integer idUsuario) {
+    return ventaRepo.countByVendedorId(idUsuario);
+    }
+
+    public int getComprasPorUsuario(Integer idUsuario) {
+    return ventaRepo.countByCompradorId(idUsuario);
+    }
+
+    public List<Venta> obtenerTodasLasVentas() {
+    return ventaRepo.findAll();
+    }
+
+    public long contarVentas() {
+    return ventaRepo.count();
+    }
+
 }

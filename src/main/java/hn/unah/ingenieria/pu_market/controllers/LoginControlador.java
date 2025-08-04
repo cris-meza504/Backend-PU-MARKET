@@ -30,11 +30,22 @@ public class LoginControlador {
 
                 Usuario usuario = loginServicio.login(correo, password);
 
-        return ResponseEntity.ok(usuario); // opcional: devolver solo lo necesario
+        return ResponseEntity.ok(usuario); 
             } catch (RuntimeException e) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(e.getMessage());
         }
-}
+    }
+        @PostMapping("/login/admin")
+        public ResponseEntity<?> loginAdmin(@RequestBody Map<String, String> loginRequest) {
+            try {
+                String correo = loginRequest.get("correo");
+                String password = loginRequest.get("password");
 
+                Usuario usuario = loginServicio.loginAdministrador(correo, password);
 
+                return ResponseEntity.ok(usuario);
+             } catch (RuntimeException e) {
+                    return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(e.getMessage());
+                }
+        }
 }

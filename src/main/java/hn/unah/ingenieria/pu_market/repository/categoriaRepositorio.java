@@ -7,5 +7,6 @@ import hn.unah.ingenieria.pu_market.entity.Categoria;
 
 @Repository
 public interface categoriaRepositorio extends JpaRepository<Categoria, Integer>{
-    
+    boolean existsByNombre(String nombre);
+
 }

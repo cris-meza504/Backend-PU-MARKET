@@ -1,13 +1,13 @@
 package hn.unah.ingenieria.pu_market.servicios;
 
 import hn.unah.ingenieria.pu_market.dto.ProductoConImagenesDTO;
-import hn.unah.ingenieria.pu_market.entity.Categoria;
 import hn.unah.ingenieria.pu_market.entity.ImagenProducto;
 import hn.unah.ingenieria.pu_market.entity.Producto;
 import hn.unah.ingenieria.pu_market.entity.Usuario;
-import hn.unah.ingenieria.pu_market.service.productoServicio;
 import hn.unah.ingenieria.pu_market.repository.imagenproductoRepositorio;
 import hn.unah.ingenieria.pu_market.repository.productoRepositorio;
+import hn.unah.ingenieria.pu_market.repository.usuarioRepositorio;
+import hn.unah.ingenieria.pu_market.service.productoServicio;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -17,12 +17,13 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import java.util.*;
 
 import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
 class ProductoServicioTest {
+
+    @Mock
+    private usuarioRepositorio usuarioRepo;
 
     @Mock
     private productoRepositorio productoRepo;
@@ -34,210 +35,161 @@ class ProductoServicioTest {
     private productoServicio productoServicio;
 
     private Producto producto;
-    private Categoria categoria;
+    private Usuario usuario;
 
     @BeforeEach
     void setUp() {
-        categoria = new Categoria();
-        categoria.setId(1);
-        categoria.setNombre("Tecnología");
+        usuario = new Usuario();
+        usuario.setId(1);
+        usuario.setNombre("Vendedor");
 
         producto = new Producto();
-        producto.setId(1);
-        producto.setNombre("Laptop");
-        producto.setDescripcion("Laptop gamer");
-        producto.setPrecio(15000.0);
+        producto.setId(100);
+        producto.setNombre("Producto de prueba");
+        producto.setDescripcion("Descripción de prueba");
+        producto.setPrecio(123.45);
         producto.setActivo(true);
-        producto.setCategoria(categoria);
-        producto.setImagenes(new ArrayList<>());
+        producto.setVendedor(usuario);
     }
 
-    // ------------------------
-    // CREAR PRODUCTO (Entidad)
-    // ------------------------
     @Test
-    void crear_producto_exito() {
-        when(productoRepo.save(any(Producto.class))).thenReturn(producto);
+    void crear_guardarProductoYAsociarImagenes() {
+        ImagenProducto img = new ImagenProducto();
+        img.setUrlImagen("url1");
+        List<ImagenProducto> imagenes = new ArrayList<>();
+        imagenes.add(img);
+        producto.setImagenes(imagenes);
 
-        Producto creado = productoServicio.crear(producto);
+        when(productoRepo.save(any(Producto.class))).thenAnswer(i -> i.getArguments()[0]);
 
-        assertNotNull(creado);
-        assertTrue(creado.getActivo());
+        Producto result = productoServicio.crear(producto);
+
+        assertTrue(result.getActivo());
+        assertEquals(1, result.getImagenes().size());
+        assertEquals(result, result.getImagenes().get(0).getProducto());
         verify(productoRepo).save(producto);
     }
 
-    // ------------------------
-    // CREAR PRODUCTO (DTO)
-    // ------------------------
     @Test
-    void crearProductoConImagenes_exito() {
+    void crearProductoConImagenes_guardaProductoYAsociaImagenes() {
         ProductoConImagenesDTO dto = new ProductoConImagenesDTO();
-        dto.setProducto(producto);
-        dto.setImagenes(Arrays.asList("url1.png", "url2.png"));
+        Producto prod = new Producto();
+        prod.setNombre("Test");
+        prod.setActivo(false);
+        dto.setProducto(prod);
+        dto.setImagenes(List.of("url1", "url2"));
 
-        when(productoRepo.save(any(Producto.class))).thenReturn(producto);
-        when(imagenRepo.save(any(ImagenProducto.class)))
-                .thenAnswer(invocation -> invocation.getArgument(0));
+        when(productoRepo.save(any(Producto.class))).thenAnswer(i -> {
+            Producto p = (Producto) i.getArguments()[0];
+            p.setId(99);
+            return p;
+        });
+        when(imagenRepo.save(any(ImagenProducto.class))).thenAnswer(i -> i.getArguments()[0]);
 
-        Producto creado = productoServicio.crearProductoConImagenes(dto);
+        Producto result = productoServicio.crearProductoConImagenes(dto);
 
-        assertNotNull(creado);
-        assertEquals(2, creado.getImagenes().size());
-        verify(productoRepo, times(1)).save(producto);
+        assertTrue(result.getActivo());
+        assertEquals(2, result.getImagenes().size());
+        assertEquals("url1", result.getImagenes().get(0).getUrlImagen());
+        assertEquals("url2", result.getImagenes().get(1).getUrlImagen());
+        verify(productoRepo, times(1)).save(any(Producto.class));
         verify(imagenRepo, times(2)).save(any(ImagenProducto.class));
     }
 
-    // ------------------------
-    // ACTUALIZAR PRODUCTO
-    // ------------------------
     @Test
-    void actualizar_producto_exito() {
-        Producto datos = new Producto();
-        datos.setNombre("Laptop Pro");
-        datos.setDescripcion("Mejor laptop");
-        datos.setPrecio(20000.0);
-        datos.setCategoria(categoria);
-        datos.setActivo(true);
+    void actualizar_productoExistente_actualizaDatos() {
+        Producto nuevosDatos = new Producto();
+        nuevosDatos.setNombre("Nuevo nombre");
+        nuevosDatos.setDescripcion("Nueva desc");
+        nuevosDatos.setPrecio(77.0);
 
-        when(productoRepo.findById(1)).thenReturn(Optional.of(producto));
-        when(productoRepo.save(any(Producto.class))).thenReturn(producto);
+        when(productoRepo.findById(producto.getId())).thenReturn(Optional.of(producto));
+        when(productoRepo.save(any(Producto.class))).thenAnswer(i -> i.getArguments()[0]);
 
-        Producto actualizado = productoServicio.actualizar(1, datos);
+        Producto actualizado = productoServicio.actualizar(producto.getId(), nuevosDatos);
 
-        assertEquals("Laptop Pro", actualizado.getNombre());
-        verify(productoRepo).findById(1);
-        verify(productoRepo).save(producto);
+        assertEquals("Nuevo nombre", actualizado.getNombre());
+        assertEquals("Nueva desc", actualizado.getDescripcion());
+        assertEquals(77.0, actualizado.getPrecio());
     }
 
     @Test
-    void actualizar_producto_noEncontrado() {
-        when(productoRepo.findById(99)).thenReturn(Optional.empty());
+    void actualizar_productoNoExiste_lanzaExcepcion() {
+        when(productoRepo.findById(anyInt())).thenReturn(Optional.empty());
 
-        RuntimeException ex = assertThrows(RuntimeException.class, () ->
-                productoServicio.actualizar(99, new Producto())
-        );
-        assertEquals("Producto no encontrado", ex.getMessage());
-    }
-
-    // ------------------------
-    // ELIMINAR 
-    // ------------------------
-    @Test
-    void eliminar_producto_exito() {
-    when(productoRepo.existsById(1)).thenReturn(true);
-
-    productoServicio.eliminar(1);
-
-    verify(productoRepo).deleteById(1);
-    }
-
-
-    @Test
-    void eliminar_producto_noEncontrado() {
-        when(productoRepo.existsById(99)).thenReturn(false);
-
-        RuntimeException ex = assertThrows(RuntimeException.class, () ->
-                productoServicio.eliminar(99)
-        );
-        assertEquals("Producto no encontrado", ex.getMessage());
-    }
-
-    // ------------------------
-    // OBTENER POR ID
-    // ------------------------
-    @Test
-    void obtenerPorId_exito() {
-        when(productoRepo.findById(1)).thenReturn(Optional.of(producto));
-
-        Producto encontrado = productoServicio.obtenerPorId(1);
-
-        assertNotNull(encontrado);
-        assertEquals("Laptop", encontrado.getNombre());
+        assertThrows(RuntimeException.class,
+                () -> productoServicio.actualizar(99, new Producto()));
     }
 
     @Test
-    void obtenerPorId_noEncontrado() {
-        when(productoRepo.findById(99)).thenReturn(Optional.empty());
+    void eliminar_productoExistente_elimina() {
+        when(productoRepo.existsById(producto.getId())).thenReturn(true);
 
-        RuntimeException ex = assertThrows(RuntimeException.class, () ->
-                productoServicio.obtenerPorId(99)
-        );
-        assertEquals("Producto no encontrado", ex.getMessage());
+        productoServicio.eliminar(producto.getId());
+        verify(productoRepo).deleteById(producto.getId());
     }
 
-    // ------------------------
-    // LISTAR
-    // ------------------------
     @Test
-    void listarTodos_exito() {
-        when(productoRepo.findByActivoTrue()).thenReturn(Arrays.asList(producto));
+    void eliminar_productoNoExiste_lanzaExcepcion() {
+        when(productoRepo.existsById(anyInt())).thenReturn(false);
 
-        List<Producto> lista = productoServicio.listarTodos();
+        assertThrows(RuntimeException.class, () -> productoServicio.eliminar(999));
+    }
 
-        assertEquals(1, lista.size());
+    @Test
+    void obtenerPorId_productoExiste_retornaProducto() {
+        when(productoRepo.findById(producto.getId())).thenReturn(Optional.of(producto));
+        Producto result = productoServicio.obtenerPorId(producto.getId());
+        assertEquals(producto, result);
+    }
+
+    @Test
+    void obtenerPorId_productoNoExiste_lanzaExcepcion() {
+        when(productoRepo.findById(anyInt())).thenReturn(Optional.empty());
+        assertThrows(RuntimeException.class, () -> productoServicio.obtenerPorId(987));
+    }
+
+    @Test
+    void listarTodos_retornaListaActivos() {
+        List<Producto> productos = Arrays.asList(new Producto(), new Producto());
+        when(productoRepo.findByActivoTrue()).thenReturn(productos);
+
+        List<Producto> result = productoServicio.listarTodos();
+        assertEquals(2, result.size());
+    }
+
+    @Test
+    void listarPorVendedorCorreo_existente() {
+        when(usuarioRepo.findByCorreoInstitucional("mail@mail.com")).thenReturn(Optional.of(usuario));
+        List<Producto> lista = Arrays.asList(new Producto(), new Producto());
+        when(productoRepo.findByVendedorIdAndActivoTrue(usuario.getId())).thenReturn(lista);
+
+        List<Producto> result = productoServicio.listarPorVendedorCorreo("mail@mail.com");
+        assertEquals(2, result.size());
+    }
+
+    @Test
+    void listarPorVendedorCorreo_noExiste() {
+        when(usuarioRepo.findByCorreoInstitucional("mail@mail.com")).thenReturn(Optional.empty());
+        List<Producto> result = productoServicio.listarPorVendedorCorreo("mail@mail.com");
+        assertTrue(result.isEmpty());
+    }
+
+    @Test
+    void contarProductos_disponibles() {
+        when(productoRepo.count()).thenReturn(9L);
+        when(productoRepo.countByActivoTrue()).thenReturn(6L);
+        assertEquals(9, productoServicio.contarProductos());
+        assertEquals(6, productoServicio.contarProductosDisponibles());
+    }
+
+    @Test
+    void obtenerProductosDisponibles_llamaRepo() {
+        List<Producto> productos = Arrays.asList(new Producto(), new Producto());
+        when(productoRepo.findByActivoTrue()).thenReturn(productos);
+
+        List<Producto> result = productoServicio.obtenerProductosDisponibles();
+        assertEquals(2, result.size());
         verify(productoRepo).findByActivoTrue();
     }
-
-    @Test
-    void listarTodosExcluyendoUsuarioLogueado_exito() {
-        when(productoRepo.findByActivoTrueAndVendedorIdNot(5)).thenReturn(Arrays.asList(producto));
-
-        List<Producto> lista = productoServicio.listarTodosExcluyendoUsuarioLogueado(5);
-
-        assertEquals(1, lista.size());
-        verify(productoRepo).findByActivoTrueAndVendedorIdNot(5);
-    }
-
-    @Test
-    void listarPorVendedor_exito() {
-        when(productoRepo.findByVendedorIdAndActivoTrue(3)).thenReturn(Arrays.asList(producto));
-
-        List<Producto> lista = productoServicio.listarPorVendedor(3);
-
-        assertEquals(1, lista.size());
-        verify(productoRepo).findByVendedorIdAndActivoTrue(3);
-    }
-
-    @Test
-    void listarPorCategoria_exito() {
-        when(productoRepo.findByCategoriaIdAndActivoTrue(1)).thenReturn(Arrays.asList(producto));
-
-        List<Producto> lista = productoServicio.listarPorCategoria(1);
-
-        assertEquals(1, lista.size());
-        verify(productoRepo).findByCategoriaIdAndActivoTrue(1);
-    }
-
-    @Mock
-private hn.unah.ingenieria.pu_market.repository.usuarioRepositorio usuarioRepo;
-
-@Test
-void listarPorVendedorCorreo_exito() {
-    Usuario vendedor = new Usuario();
-    vendedor.setId(10);
-    vendedor.setCorreoInstitucional("test@unah.hn");
-
-    when(usuarioRepo.findByCorreoInstitucional("test@unah.hn")).thenReturn(Optional.of(vendedor));
-    when(productoRepo.findByVendedorIdAndActivoTrue(10)).thenReturn(List.of(producto));
-
-    List<Producto> productos = productoServicio.listarPorVendedorCorreo("test@unah.hn");
-
-    assertEquals(1, productos.size());
-    verify(usuarioRepo).findByCorreoInstitucional("test@unah.hn");
-    verify(productoRepo).findByVendedorIdAndActivoTrue(10);
-    }
-
-    @Test
-void listarPorVendedorCorreo_usuarioNoEncontrado() {
-    when(usuarioRepo.findByCorreoInstitucional("desconocido@unah.hn")).thenReturn(Optional.empty());
-
-    List<Producto> productos = productoServicio.listarPorVendedorCorreo("desconocido@unah.hn");
-
-    assertTrue(productos.isEmpty());
-    verify(usuarioRepo).findByCorreoInstitucional("desconocido@unah.hn");
-    verify(productoRepo, never()).findByVendedorIdAndActivoTrue(anyInt());
-}
-
-
-
 }

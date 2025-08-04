@@ -11,4 +11,6 @@ import hn.unah.ingenieria.pu_market.entity.Resena;
 public interface resenaRepositorio extends JpaRepository<Resena, Integer> {
     List<Resena> findByVendedor_Id(Integer idvendedor);
     List<Resena> findByVendedor_CorreoInstitucional(String correoVendedor);
+    List<Resena> findByResenadorId(Integer idUsuarioResenador);
+
 }

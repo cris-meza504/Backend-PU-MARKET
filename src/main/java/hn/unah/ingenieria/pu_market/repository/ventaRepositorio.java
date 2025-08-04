@@ -12,4 +12,10 @@ public interface ventaRepositorio extends JpaRepository< Venta, Integer>{
     List<Venta> findByVendedorId(Integer idVendedor);
     List<Venta> findByCompradorId(Integer idComprador);
     List<Venta> findByProductoId(Integer idProducto);
+
+    // Contar ventas hechas por un usuario (como vendedor)
+    int countByVendedorId(Integer idVendedor);
+
+    // Contar compras hechas por un usuario (como comprador)
+    int countByCompradorId(Integer idComprador);
 }

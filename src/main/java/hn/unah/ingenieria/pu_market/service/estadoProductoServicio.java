@@ -27,6 +27,9 @@ public class estadoProductoServicio {
 
     // Crear un nuevo estado
     public EstadoProducto crear(EstadoProducto estado) {
+        if (estadosProductoRepo.existsByNombre(estado.getNombre())) {
+            throw new RuntimeException("Ya existe un estado con ese nombre");
+        }
         return estadosProductoRepo.save(estado);
     }
 
@@ -34,12 +37,23 @@ public class estadoProductoServicio {
     public EstadoProducto actualizar(Integer id, EstadoProducto nuevoEstado) {
         EstadoProducto estado = estadosProductoRepo.findById(id)
             .orElseThrow(() -> new RuntimeException("Estado no encontrado"));
+            if (estadosProductoRepo.existsByNombre(nuevoEstado.getNombre()) &&
+            !estado.getNombre().equals(nuevoEstado.getNombre())) {
+            throw new RuntimeException("Ya existe un estado con ese nombre");
+        }
         estado.setNombre(nuevoEstado.getNombre());
         return estadosProductoRepo.save(estado);
     }
 
     // Eliminar estado por id
     public void eliminar(Integer id) {
+        if (!estadosProductoRepo.existsById(id)) {
+            throw new RuntimeException("Estado no encontrado");
+        }
+        try {
         estadosProductoRepo.deleteById(id);
+    } catch (Exception e) {
+        throw new RuntimeException("No puedes eliminar este estado porque hay productos asociados.");
+    }
     }
 }

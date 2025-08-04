@@ -10,8 +10,10 @@ import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
+import hn.unah.ingenieria.pu_market.entity.Rol;
 import hn.unah.ingenieria.pu_market.entity.Usuario;
 import hn.unah.ingenieria.pu_market.entity.Verificacion;
+import hn.unah.ingenieria.pu_market.repository.rolRepositorio;
 import hn.unah.ingenieria.pu_market.repository.usuarioRepositorio;
 import hn.unah.ingenieria.pu_market.repository.verificacionesRepositorio;
 
@@ -21,6 +23,9 @@ public class registroServicio {
     
     @Autowired
     private usuarioRepositorio usuarioRepo;
+
+    @Autowired
+    private rolRepositorio rolRepo;
 
     @Autowired
     private verificacionesRepositorio verificacionRepo;
@@ -46,6 +51,10 @@ public class registroServicio {
 
         //encriptacion de la contraseña 
         usuario.setPasswordHash(passwordEncoder.encode(password));
+
+        Rol rolEstudiante = rolRepo.findByNombreRol("ESTUDIANTE")
+        .orElseThrow(() -> new RuntimeException("Rol estudiante no existe"));
+         usuario.getRoles().add(rolEstudiante);
 
 
         usuarioRepo.save(usuario);

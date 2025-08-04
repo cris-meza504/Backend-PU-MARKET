@@ -1,17 +1,15 @@
 package hn.unah.ingenieria.pu_market.servicios;
 
 import hn.unah.ingenieria.pu_market.entity.Categoria;
-import hn.unah.ingenieria.pu_market.service.categoriaServicio;
 import hn.unah.ingenieria.pu_market.repository.categoriaRepositorio;
+import hn.unah.ingenieria.pu_market.service.categoriaServicio;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.*;
 import org.mockito.junit.jupiter.MockitoExtension;
 
-import java.util.Arrays;
-import java.util.List;
-import java.util.Optional;
+import java.util.*;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
@@ -20,10 +18,10 @@ import static org.mockito.Mockito.*;
 class CategoriaServicioTest {
 
     @Mock
-    private categoriaRepositorio categoriaRepo;
+    private categoriaRepositorio repo;
 
     @InjectMocks
-    private categoriaServicio categoriaServicio;
+    private categoriaServicio servicio;
 
     private Categoria categoria;
 
@@ -31,101 +29,135 @@ class CategoriaServicioTest {
     void setUp() {
         categoria = new Categoria();
         categoria.setId(1);
-        categoria.setNombre("Tecnología");
+        categoria.setNombre("Electrónica");
     }
 
     @Test
-    void crear_categoria() {
-        when(categoriaRepo.save(any(Categoria.class))).thenReturn(categoria);
+    void crear_categoriaNueva_exito() {
+        when(repo.existsByNombre("Electrónica")).thenReturn(false);
+        when(repo.save(any(Categoria.class))).thenAnswer(i -> i.getArguments()[0]);
+        Categoria c = new Categoria();
+        c.setNombre("Electrónica");
 
-        Categoria creada = categoriaServicio.crear(new Categoria());
+        Categoria result = servicio.crear(c);
 
-        assertNotNull(creada);
-        assertEquals("Tecnología", creada.getNombre());
-        verify(categoriaRepo).save(any(Categoria.class));
+        assertEquals("Electrónica", result.getNombre());
+        verify(repo).save(c);
     }
 
     @Test
-    void actualizar_categoria_existente() {
-        Categoria datosActualizados = new Categoria();
-        datosActualizados.setNombre("Electrónica");
+    void crear_categoriaDuplicada_lanzaError() {
+        when(repo.existsByNombre("Electrónica")).thenReturn(true);
+        Categoria c = new Categoria();
+        c.setNombre("Electrónica");
 
-        when(categoriaRepo.findById(1)).thenReturn(Optional.of(categoria));
-        when(categoriaRepo.save(any(Categoria.class))).thenAnswer(invocation -> invocation.getArgument(0));
-
-        Categoria actualizada = categoriaServicio.actualizar(1, datosActualizados);
-
-        assertEquals("Electrónica", actualizada.getNombre());
-        verify(categoriaRepo).findById(1);
-        verify(categoriaRepo).save(categoria);
+        RuntimeException ex = assertThrows(RuntimeException.class,
+                () -> servicio.crear(c));
+        assertEquals("Ya existe una categoría con ese nombre", ex.getMessage());
+        verify(repo, never()).save(any());
     }
 
     @Test
-    void actualizar_categoria_noEncontrada() {
-        when(categoriaRepo.findById(2)).thenReturn(Optional.empty());
+    void actualizar_categoria_exito() {
+        Categoria existente = new Categoria();
+        existente.setId(1);
+        existente.setNombre("Ropa");
+        Categoria cambios = new Categoria();
+        cambios.setNombre("Libros");
 
-        RuntimeException ex = assertThrows(RuntimeException.class, () ->
-                categoriaServicio.actualizar(2, new Categoria())
-        );
+        when(repo.findById(1)).thenReturn(Optional.of(existente));
+        when(repo.existsByNombre("Libros")).thenReturn(false);
+        when(repo.save(any(Categoria.class))).thenAnswer(i -> i.getArguments()[0]);
+
+        Categoria result = servicio.actualizar(1, cambios);
+
+        assertEquals("Libros", result.getNombre());
+        verify(repo).save(existente);
+    }
+
+    @Test
+    void actualizar_categoria_nombreDuplicado_lanzaError() {
+        Categoria existente = new Categoria();
+        existente.setId(1);
+        existente.setNombre("Electrodomésticos");
+        Categoria cambios = new Categoria();
+        cambios.setNombre("Ropa");
+
+        when(repo.findById(1)).thenReturn(Optional.of(existente));
+        when(repo.existsByNombre("Ropa")).thenReturn(true);
+
+        RuntimeException ex = assertThrows(RuntimeException.class,
+                () -> servicio.actualizar(1, cambios));
+        assertEquals("Ya existe una categoría con ese nombre", ex.getMessage());
+        verify(repo, never()).save(any());
+    }
+
+    @Test
+    void actualizar_categoria_noEncontrada_lanzaError() {
+        when(repo.findById(99)).thenReturn(Optional.empty());
+        Categoria cambios = new Categoria();
+        cambios.setNombre("Cualquiera");
+
+        RuntimeException ex = assertThrows(RuntimeException.class,
+                () -> servicio.actualizar(99, cambios));
         assertEquals("Categoría no encontrada", ex.getMessage());
     }
 
     @Test
-    void eliminar_categoria_existente() {
-        when(categoriaRepo.existsById(1)).thenReturn(true);
-        doNothing().when(categoriaRepo).deleteById(1);
+    void eliminar_categoria_exito() {
+        when(repo.existsById(1)).thenReturn(true);
+        doNothing().when(repo).deleteById(1);
 
-        categoriaServicio.eliminar(1);
-
-        verify(categoriaRepo).existsById(1);
-        verify(categoriaRepo).deleteById(1);
+        assertDoesNotThrow(() -> servicio.eliminar(1));
+        verify(repo).deleteById(1);
     }
 
     @Test
-    void eliminar_categoria_noEncontrada() {
-        when(categoriaRepo.existsById(2)).thenReturn(false);
+    void eliminar_categoria_noExistente_lanzaError() {
+        when(repo.existsById(99)).thenReturn(false);
 
-        RuntimeException ex = assertThrows(RuntimeException.class, () ->
-                categoriaServicio.eliminar(2)
-        );
+        RuntimeException ex = assertThrows(RuntimeException.class,
+                () -> servicio.eliminar(99));
         assertEquals("Categoría no encontrada", ex.getMessage());
+        verify(repo, never()).deleteById(anyInt());
+    }
+
+    @Test
+    void eliminar_categoria_conProductosAsociados_lanzaError() {
+        when(repo.existsById(1)).thenReturn(true);
+        doThrow(new RuntimeException("Constraint")).when(repo).deleteById(1);
+
+        RuntimeException ex = assertThrows(RuntimeException.class,
+                () -> servicio.eliminar(1));
+        assertEquals("No puedes eliminar esta categoría porque hay productos asociados.", ex.getMessage());
     }
 
     @Test
     void obtenerPorId_existente() {
-        when(categoriaRepo.findById(1)).thenReturn(Optional.of(categoria));
+        when(repo.findById(1)).thenReturn(Optional.of(categoria));
+        Categoria result = servicio.obtenerPorId(1);
 
-        Categoria encontrada = categoriaServicio.obtenerPorId(1);
-
-        assertNotNull(encontrada);
-        assertEquals("Tecnología", encontrada.getNombre());
+        assertNotNull(result);
+        assertEquals("Electrónica", result.getNombre());
     }
 
     @Test
-    void obtenerPorId_noEncontrada() {
-        when(categoriaRepo.findById(2)).thenReturn(Optional.empty());
+    void obtenerPorId_noExistente_lanzaError() {
+        when(repo.findById(99)).thenReturn(Optional.empty());
 
-        RuntimeException ex = assertThrows(RuntimeException.class, () ->
-                categoriaServicio.obtenerPorId(2)
-        );
+        RuntimeException ex = assertThrows(RuntimeException.class,
+                () -> servicio.obtenerPorId(99));
         assertEquals("Categoría no encontrada", ex.getMessage());
     }
 
     @Test
-    void listarTodas_categorias() {
-        List<Categoria> lista = Arrays.asList(
-                categoria,
-                new Categoria() {{
-                    setId(2);
-                    setNombre("Ropa");
-                }}
-        );
+    void listarTodas_devuelveLista() {
+        List<Categoria> lista = Arrays.asList(categoria);
+        when(repo.findAll()).thenReturn(lista);
 
-        when(categoriaRepo.findAll()).thenReturn(lista);
+        List<Categoria> result = servicio.listarTodas();
 
-        List<Categoria> resultado = categoriaServicio.listarTodas();
-
-        assertEquals(2, resultado.size());
-        verify(categoriaRepo).findAll();
+        assertEquals(1, result.size());
+        assertEquals("Electrónica", result.get(0).getNombre());
     }
 }

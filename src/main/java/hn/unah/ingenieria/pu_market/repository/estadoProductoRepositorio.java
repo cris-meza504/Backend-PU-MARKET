@@ -8,4 +8,6 @@ import hn.unah.ingenieria.pu_market.entity.EstadoProducto;
 @Repository
 public interface estadoProductoRepositorio extends JpaRepository<EstadoProducto, Integer>{
     
+    boolean existsByNombre(String nombre);
+
 }

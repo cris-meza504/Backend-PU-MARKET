@@ -137,6 +137,18 @@ public class productoServicio {
         return List.of();
     }
     return productoRepo.findByVendedorIdAndActivoTrue(vendedor.getId());
+    }
+
+    public long contarProductos() {
+    return productoRepo.count();
+    }
+
+    public long contarProductosDisponibles() {
+    return productoRepo.countByActivoTrue();
+    }
+
+    public List<Producto> obtenerProductosDisponibles() {
+    return productoRepo.findByActivoTrue();
 }
 
 }

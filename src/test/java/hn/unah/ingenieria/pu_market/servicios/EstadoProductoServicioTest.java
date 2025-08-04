@@ -18,10 +18,10 @@ import static org.mockito.Mockito.*;
 class EstadoProductoServicioTest {
 
     @Mock
-    private estadoProductoRepositorio estadoRepo;
+    private estadoProductoRepositorio repo;
 
     @InjectMocks
-    private estadoProductoServicio estadoServicio;
+    private estadoProductoServicio servicio;
 
     private EstadoProducto estado;
 
@@ -35,79 +35,132 @@ class EstadoProductoServicioTest {
     @Test
     void listarEstados_debeRetornarLista() {
         List<EstadoProducto> lista = Arrays.asList(estado);
-        when(estadoRepo.findAll()).thenReturn(lista);
+        when(repo.findAll()).thenReturn(lista);
 
-        List<EstadoProducto> resultado = estadoServicio.listarEstados();
+        List<EstadoProducto> result = servicio.listarEstados();
 
-        assertNotNull(resultado);
-        assertEquals(1, resultado.size());
-        assertEquals("Nuevo", resultado.get(0).getNombre());
-        verify(estadoRepo).findAll();
+        assertEquals(1, result.size());
+        assertEquals("Nuevo", result.get(0).getNombre());
     }
 
     @Test
-    void buscarPorId_encontrado() {
-        when(estadoRepo.findById(1)).thenReturn(Optional.of(estado));
+    void buscarPorId_existente() {
+        when(repo.findById(1)).thenReturn(Optional.of(estado));
+        Optional<EstadoProducto> result = servicio.buscarPorId(1);
 
-        Optional<EstadoProducto> encontrado = estadoServicio.buscarPorId(1);
-
-        assertTrue(encontrado.isPresent());
-        assertEquals("Nuevo", encontrado.get().getNombre());
-        verify(estadoRepo).findById(1);
+        assertTrue(result.isPresent());
+        assertEquals("Nuevo", result.get().getNombre());
     }
 
     @Test
-    void buscarPorId_noEncontrado() {
-        when(estadoRepo.findById(99)).thenReturn(Optional.empty());
+    void buscarPorId_noExistente() {
+        when(repo.findById(99)).thenReturn(Optional.empty());
+        Optional<EstadoProducto> result = servicio.buscarPorId(99);
 
-        Optional<EstadoProducto> encontrado = estadoServicio.buscarPorId(99);
-
-        assertFalse(encontrado.isPresent());
-        verify(estadoRepo).findById(99);
+        assertFalse(result.isPresent());
     }
 
     @Test
-    void crear_debeGuardarEstado() {
-        when(estadoRepo.save(estado)).thenReturn(estado);
+    void crear_estadoNuevo_exito() {
+        when(repo.existsByNombre("Nuevo")).thenReturn(false);
+        when(repo.save(any(EstadoProducto.class))).thenAnswer(i -> i.getArguments()[0]);
 
-        EstadoProducto creado = estadoServicio.crear(estado);
-
-        assertNotNull(creado);
-        assertEquals("Nuevo", creado.getNombre());
-        verify(estadoRepo).save(estado);
-    }
-
-    @Test
-    void actualizar_estadoExistente() {
         EstadoProducto nuevo = new EstadoProducto();
-        nuevo.setNombre("Usado");
+        nuevo.setNombre("Nuevo");
 
-        when(estadoRepo.findById(1)).thenReturn(Optional.of(estado));
-        when(estadoRepo.save(any(EstadoProducto.class))).thenAnswer(i -> i.getArgument(0));
-
-        EstadoProducto actualizado = estadoServicio.actualizar(1, nuevo);
-
-        assertEquals("Usado", actualizado.getNombre());
-        verify(estadoRepo).findById(1);
-        verify(estadoRepo).save(estado);
+        EstadoProducto result = servicio.crear(nuevo);
+        assertEquals("Nuevo", result.getNombre());
+        verify(repo).save(nuevo);
     }
 
     @Test
-    void actualizar_estadoNoExistente() {
-        when(estadoRepo.findById(99)).thenReturn(Optional.empty());
+    void crear_estadoExistente_lanzaError() {
+        when(repo.existsByNombre("Nuevo")).thenReturn(true);
 
-        RuntimeException ex = assertThrows(RuntimeException.class, () ->
-                estadoServicio.actualizar(99, new EstadoProducto())
-        );
+        EstadoProducto nuevo = new EstadoProducto();
+        nuevo.setNombre("Nuevo");
+
+        RuntimeException ex = assertThrows(RuntimeException.class,
+                () -> servicio.crear(nuevo));
+        assertEquals("Ya existe un estado con ese nombre", ex.getMessage());
+        verify(repo, never()).save(any());
+    }
+
+    @Test
+    void actualizar_estado_exito() {
+        EstadoProducto actual = new EstadoProducto();
+        actual.setId(1);
+        actual.setNombre("Viejo");
+
+        EstadoProducto cambios = new EstadoProducto();
+        cambios.setNombre("Actualizado");
+
+        when(repo.findById(1)).thenReturn(Optional.of(actual));
+        when(repo.existsByNombre("Actualizado")).thenReturn(false);
+        when(repo.save(any(EstadoProducto.class))).thenAnswer(i -> i.getArguments()[0]);
+
+        EstadoProducto result = servicio.actualizar(1, cambios);
+
+        assertEquals("Actualizado", result.getNombre());
+        verify(repo).save(actual);
+    }
+
+    @Test
+    void actualizar_estado_nombreExistente_lanzaError() {
+        EstadoProducto actual = new EstadoProducto();
+        actual.setId(1);
+        actual.setNombre("Viejo");
+
+        EstadoProducto cambios = new EstadoProducto();
+        cambios.setNombre("Existente");
+
+        when(repo.findById(1)).thenReturn(Optional.of(actual));
+        when(repo.existsByNombre("Existente")).thenReturn(true);
+
+        RuntimeException ex = assertThrows(RuntimeException.class,
+                () -> servicio.actualizar(1, cambios));
+        assertEquals("Ya existe un estado con ese nombre", ex.getMessage());
+        verify(repo, never()).save(any());
+    }
+
+    @Test
+    void actualizar_estado_noEncontrado_lanzaError() {
+        EstadoProducto cambios = new EstadoProducto();
+        cambios.setNombre("Cualquiera");
+
+        when(repo.findById(99)).thenReturn(Optional.empty());
+
+        RuntimeException ex = assertThrows(RuntimeException.class,
+                () -> servicio.actualizar(99, cambios));
         assertEquals("Estado no encontrado", ex.getMessage());
-        verify(estadoRepo).findById(99);
     }
 
     @Test
-    void eliminar_debeBorrarPorId() {
-        doNothing().when(estadoRepo).deleteById(1);
+    void eliminar_estado_exito() {
+        when(repo.existsById(1)).thenReturn(true);
+        doNothing().when(repo).deleteById(1);
 
-        assertDoesNotThrow(() -> estadoServicio.eliminar(1));
-        verify(estadoRepo).deleteById(1);
+        assertDoesNotThrow(() -> servicio.eliminar(1));
+        verify(repo).deleteById(1);
+    }
+
+    @Test
+    void eliminar_estado_noExistente_lanzaError() {
+        when(repo.existsById(99)).thenReturn(false);
+
+        RuntimeException ex = assertThrows(RuntimeException.class,
+                () -> servicio.eliminar(99));
+        assertEquals("Estado no encontrado", ex.getMessage());
+        verify(repo, never()).deleteById(anyInt());
+    }
+
+    @Test
+    void eliminar_estado_conProductosAsociados_lanzaError() {
+        when(repo.existsById(1)).thenReturn(true);
+        doThrow(new RuntimeException("Constraint")).when(repo).deleteById(1);
+
+        RuntimeException ex = assertThrows(RuntimeException.class,
+                () -> servicio.eliminar(1));
+        assertEquals("No puedes eliminar este estado porque hay productos asociados.", ex.getMessage());
     }
 }

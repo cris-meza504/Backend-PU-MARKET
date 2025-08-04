@@ -17,4 +17,7 @@ public interface productoRepositorio extends JpaRepository<Producto, Integer>{
     List<Producto> findByCategoriaIdAndActivoTrue(Integer categoriaId);
     //listar todos los productos menos los del usuario logiado 
     List<Producto> findByActivoTrueAndVendedorIdNot(Integer vendedorId);
+    //contar solo los productos disponibles
+    long countByActivoTrue();
+
 }

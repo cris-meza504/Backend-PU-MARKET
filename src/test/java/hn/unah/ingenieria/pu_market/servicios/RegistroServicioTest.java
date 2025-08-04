@@ -1,7 +1,9 @@
 package hn.unah.ingenieria.pu_market.servicios;
 
 import hn.unah.ingenieria.pu_market.entity.Usuario;
+import hn.unah.ingenieria.pu_market.entity.Rol;
 import hn.unah.ingenieria.pu_market.entity.Verificacion;
+import hn.unah.ingenieria.pu_market.repository.rolRepositorio;
 import hn.unah.ingenieria.pu_market.repository.usuarioRepositorio;
 import hn.unah.ingenieria.pu_market.repository.verificacionesRepositorio;
 import hn.unah.ingenieria.pu_market.service.registroServicio;
@@ -10,13 +12,12 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.*;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.mail.SimpleMailMessage;
+import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
 import java.time.LocalDateTime;
 import java.util.Optional;
-
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
@@ -25,6 +26,9 @@ class RegistroServicioTest {
 
     @Mock
     private usuarioRepositorio usuarioRepo;
+
+    @Mock
+    private rolRepositorio rolRepo;
 
     @Mock
     private verificacionesRepositorio verificacionRepo;
@@ -39,6 +43,7 @@ class RegistroServicioTest {
     private registroServicio registroServicio;
 
     private Usuario usuario;
+    private Rol rolEstudiante;
     private Verificacion verificacion;
 
     @BeforeEach
@@ -49,6 +54,9 @@ class RegistroServicioTest {
         usuario.setCorreoInstitucional("juan@unah.hn");
         usuario.setMatricula("2019xxxx");
         usuario.setVerificado(false);
+
+        rolEstudiante = new Rol();
+        rolEstudiante.setNombreRol("ESTUDIANTE");
 
         verificacion = new Verificacion();
         verificacion.setUsuario(usuario);
@@ -61,7 +69,8 @@ class RegistroServicioTest {
     void registrarNuevoUsuario_exito() {
         when(usuarioRepo.findByCorreoInstitucional(usuario.getCorreoInstitucional()))
                 .thenReturn(Optional.empty());
-        when(passwordEncoder.encode("secreta")).thenReturn("hashsecreta");
+        when(passwordEncoder.encode(anyString())).thenReturn("hashsecreta");
+        when(rolRepo.findByNombreRol("ESTUDIANTE")).thenReturn(Optional.of(rolEstudiante));
         when(usuarioRepo.save(any(Usuario.class))).thenAnswer(i -> i.getArguments()[0]);
         when(verificacionRepo.save(any(Verificacion.class))).thenAnswer(i -> i.getArguments()[0]);
 
@@ -87,6 +96,21 @@ class RegistroServicioTest {
         );
         assertEquals("Correo ya registrado.", ex.getMessage());
         verify(mailSender, never()).send(any(SimpleMailMessage.class));
+    }
+
+    @Test
+    void registrarNuevoUsuario_rolNoExiste() {
+        when(usuarioRepo.findByCorreoInstitucional(usuario.getCorreoInstitucional()))
+                .thenReturn(Optional.empty());
+        when(rolRepo.findByNombreRol("ESTUDIANTE")).thenReturn(Optional.empty());
+
+        RuntimeException ex = assertThrows(RuntimeException.class, () ->
+                registroServicio.registrarNuevoUsuario(
+                        usuario.getNombre(), usuario.getApellido(),
+                        usuario.getCorreoInstitucional(), usuario.getMatricula(), "secreta"
+                )
+        );
+        assertEquals("Rol estudiante no existe", ex.getMessage());
     }
 
     @Test
